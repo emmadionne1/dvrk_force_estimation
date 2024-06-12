@@ -68,7 +68,8 @@ class indirectDataset(Dataset):
 
 class indirectTestDataset(indirectDataset):
     def __init__(self, path, window, skip, indices = [0,1,2,3,4,5], is_rnn=False, filter_signal=False):
-        super(indirectTestDataset, self).__init__(path, window, skip, indices = [0,1,2,3,4,5], is_rnn=is_rnn, filter_signal=filter_signal)
+        #super(indirectTestDataset, self).__init__(path, window, skip, indices = [0,1,2,3,4,5], is_rnn=is_rnn, filter_signal=filter_signal)
+        super(indirectTestDataset, self).__init__(path, window, skip, indices = indices, is_rnn=is_rnn, filter_signal=filter_signal)
 
     def __len__(self):
         return self.torque.shape[0] - self.window*self.skip

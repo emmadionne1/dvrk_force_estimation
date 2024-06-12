@@ -12,11 +12,14 @@ from os.path import join
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data = sys.argv[1]
-train_path = join('..', 'data', 'csv', 'train', data)
-val_path = join('..','data','csv','val', data)
-root = Path('checkpoints' )
-is_rnn = bool(int(sys.argv[2]))
+data = 'emma_data_may_9' #sys.argv[1]
+#train_path = join('..', 'data', 'csv', 'train', data)
+train_path = join('filtered_torque', data, 'train', 'free_space')
+#val_path = join('..','data','csv','val', data)
+val_path = join('filtered_torque', data, 'val', 'free_space')
+#root = Path('checkpoints' )
+root = Path('..', 'indirect_method')
+is_rnn = 1 # 1 = lstm; 0 = ff#bool(int(sys.argv[2]))
 if is_rnn:
     folder = 'lstm/' + data
 else:
@@ -29,7 +32,7 @@ epochs = 1000
 validate_each = 5
 use_previous_model = False
 epoch_to_use = 40
-in_joints = [0,1,2,3,4,5]
+in_joints = [0,1,2]#[0,1,2]#[0,1,2,3,4,5]
 f = False
 print('Running for is_rnn value: ', is_rnn)
 
@@ -41,10 +44,11 @@ model_root = []
 for j in range(JOINTS):
     if is_rnn:
         window = 1000
-        networks.append(torqueLstmNetwork(batch_size, device))
+        #networks.append(torqueLstmNetwork(batch_size, device))
+        networks.append(torqueLstmNetwork(batch_size, device, joints=3))
     else:
         window = WINDOW
-        networks.append(fsNetwork(window))
+        networks.append(fsNetwork(window, JOINTS))
 
     networks[j].to(device)
     optimizers.append(torch.optim.Adam(networks[j].parameters(), lr))

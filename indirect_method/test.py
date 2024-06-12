@@ -10,23 +10,23 @@ from dataset import indirectTestDataset, indirectDataset
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 contact = 'with_contact'
-data = 'trocar'
+data = 'emma_data_may_9' #'trocar'
 
 JOINTS = utils.JOINTS
 epoch_to_use = 0 #int(sys.argv[1])
 exp = sys.argv[1] #sys.argv[2]
 net = sys.argv[2]
 seal = sys.argv[3]
-preprocess = 'filtered_torque'# sys.argv[4]
+preprocess = ''#'filtered_torque'# sys.argv[4]
 is_rnn = net == 'lstm'
 if is_rnn:
     batch_size = 1
 else:
     batch_size = 8192
-root = Path('checkpoints' )
+root = Path('filtered_torque')#Path('checkpoints' )
 
 if seal == 'seal':
-    fs = 'free_space'
+    fs = 'emma_data_may_9' #'free_space'
 elif seal =='base':
     fs = 'no_cannula'
 
@@ -35,14 +35,16 @@ max_torque = torch.tensor(utils.max_torque).to(device)
 def main():
     all_pred = None
     if exp == 'train':
-        path = '../data/csv/train/' + data + '/'
+        #path = '../data/csv/train/' + data + '/'
+        path = 'filtered_torque/' + data + '/train/free_space/'
     elif exp == 'val':
         path = '../data/csv/val/' + data + '/'
-    elif exp =='test':
-        path = '../data/csv/test/' + data + '/no_contact/'
+    elif exp == 'test':
+        #path = '../data/csv/test/' + data + '/no_contact/'
+        path = 'filtered_torque/' + data + '/test/free_space/'
     else:
         path = '../data/csv/test/' + data + '/' + contact + '/' + exp + '/'
-    in_joints = [0,1,2,3,4,5]
+    in_joints = [0,1,2]#[0,1,2,3,4,5]
 
     if is_rnn:
         window = 1000
@@ -53,7 +55,7 @@ def main():
     if is_rnn:
         dataset = indirectDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn)
     else:
-        dataset = indirectTestDataset(path, window, utils.SKIP, in_joints, is_rnn=is_rnn)
+        dataset = indirectTestDataset(path, window, utils.SKIP, indices=in_joints, is_rnn=is_rnn)
     loader = DataLoader(dataset=dataset, batch_size = batch_size, shuffle=False, drop_last=False)
 
     model_root = []    
@@ -64,9 +66,9 @@ def main():
     networks = []
     for j in range(JOINTS):
         if is_rnn:
-            networks.append(torqueLstmNetwork(batch_size, device).to(device))
+            networks.append(torqueLstmNetwork(batch_size, device, joints=JOINTS).to(device))
         else:
-            networks.append(fsNetwork(window).to(device))
+            networks.append(fsNetwork(window, JOINTS).to(device))
 
     for j in range(JOINTS):
         utils.load_prev(networks[j], model_root[j], epoch_to_use)
@@ -77,7 +79,8 @@ def main():
     all_pred = torch.tensor([])
     all_time = torch.tensor([])
 
-    for i, (position, velocity, torque, jacobian, time) in enumerate(loader):
+    for i, (position, velocity, torque, jacobian, time) in enumerate(loader): #lstm
+    #for i, (position, velocity, torque, time) in enumerate(loader): #ff
         position = position.to(device)
         velocity = velocity.to(device)
         if is_rnn: 
@@ -92,7 +95,7 @@ def main():
         cur_pred = torch.zeros(torque.size())
         for j in range(JOINTS):
             pred = networks[j](posvel).squeeze().detach()
-#            pred = pred * max_torque[j]
+#            pred = pred * max_torque[j] #was commented out before
             cur_pred[:,j] = pred.cpu()
 
 #        loss = loss_fn(cur_pred, torque)
@@ -105,7 +108,7 @@ def main():
         all_pred = torch.cat((all_pred, cur_pred.cpu()), axis=0) if all_pred.size() else cur_pred.cpu()
 
     all_pred = torch.cat((all_time.unsqueeze(1), all_pred), axis=1)
-    np.savetxt(path + net + '_' + seal + '_pred_' + preprocess + '.csv', all_pred.numpy())
+    np.savetxt(path + net + '_' + seal + '_pred_3_joints_' + preprocess + '.csv', all_pred.numpy())
         
 #   print('Loss: ', all_loss)
 
